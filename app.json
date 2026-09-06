@@ -1,0 +1,9 @@
+{
+  "name": "SmartCameraApp",
+  "displayName": "SmartCameraApp",
+  "extra": {
+    "eas": {
+      "projectId": "f4590c16-42b2-479c-a80a-5aa2af95a626"
+    }
+  }
+}
