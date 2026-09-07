@@ -99,13 +99,45 @@ tasks.named('preBuild').configure {
     dependsOn 'verifyModelFile'
 }
 
+// Custom task to copy model file to merged assets
+tasks.register('copyModelToMergedAssets') {
+    doLast {
+        android.applicationVariants.all { variant ->
+            if (variant.buildType.name == 'release') {
+                def sourceModel = file('src/main/assets/demo_model.tflite')
+                def mergedAssetsDir = file("${buildDir}/intermediates/merged_assets/${variant.name}/out")
+                def targetModel = new File(mergedAssetsDir, 'demo_model.tflite')
+                
+                println "========================================="
+                println "COPYING MODEL TO MERGED ASSETS"
+                println "Source: ${sourceModel.absolutePath}"
+                println "Target: ${targetModel.absolutePath}"
+                
+                if (sourceModel.exists()) {
+                    mergedAssetsDir.mkdirs()
+                    sourceModel.withInputStream { input ->
+                        targetModel.withOutputStream { output ->
+                            output << input
+                        }
+                    }
+                    println "✅ Copied model: ${targetModel.length()} bytes"
+                } else {
+                    println "❌ Source model NOT FOUND"
+                }
+                println "========================================="
+            }
+        }
+    }
+}
+
 // Ensure model files are not stripped
 android.applicationVariants.all { variant ->
     if (variant.buildType.name == 'release') {
-        variant.mergeResourcesProvider.configure {
+        variant.mergeAssetsProvider.configure {
+            dependsOn 'copyModelToMergedAssets'
             doLast {
                 println "========================================="
-                println "AFTER MERGE RESOURCES - Checking model files"
+                println "AFTER MERGE ASSETS - Checking model files"
                 def mergedAssets = file("${buildDir}/intermediates/merged_assets/${variant.name}/out/demo_model.tflite")
                 if (mergedAssets.exists()) {
                     println "✅ Merged assets model: ${mergedAssets.length()} bytes"
