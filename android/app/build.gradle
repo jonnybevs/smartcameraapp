@@ -62,3 +62,52 @@ dependencies {
 }
 
 apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesAppBuildGradle(project)
+
+// Verify model file exists and has correct size
+tasks.register('verifyModelFile') {
+    doLast {
+        def assetsModel = file('src/main/assets/demo_model.tflite')
+        def rawModel = file('src/main/res/raw/demo_model.tflite')
+        
+        println "========================================="
+        println "MODEL FILE VERIFICATION"
+        println "========================================="
+        
+        if (assetsModel.exists()) {
+            println "✅ Assets model exists: ${assetsModel.length()} bytes"
+        } else {
+            println "❌ Assets model NOT FOUND"
+        }
+        
+        if (rawModel.exists()) {
+            println "✅ Raw model exists: ${rawModel.length()} bytes"
+        } else {
+            println "❌ Raw model NOT FOUND"
+        }
+        
+        println "========================================="
+    }
+}
+
+tasks.named('preBuild').configure {
+    dependsOn 'verifyModelFile'
+}
+
+// Ensure model files are not stripped
+android.applicationVariants.all { variant ->
+    if (variant.buildType.name == 'release') {
+        variant.mergeResourcesProvider.configure {
+            doLast {
+                println "========================================="
+                println "AFTER MERGE RESOURCES - Checking model files"
+                def mergedAssets = file("${buildDir}/intermediates/merged_assets/${variant.name}/out/demo_model.tflite")
+                if (mergedAssets.exists()) {
+                    println "✅ Merged assets model: ${mergedAssets.length()} bytes"
+                } else {
+                    println "❌ Merged assets model NOT FOUND at: ${mergedAssets.absolutePath}"
+                }
+                println "========================================="
+            }
+        }
+    }
+}
