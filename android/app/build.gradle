@@ -147,5 +147,27 @@ android.applicationVariants.all { variant ->
                 println "========================================="
             }
         }
+        
+        // Check after compression
+        variant.assembleProvider.configure {
+            doLast {
+                println "========================================="
+                println "AFTER APK ASSEMBLY - Checking compressed assets"
+                def compressedAssets = file("${buildDir}/intermediates/compressed_assets/${variant.name}/out/demo_model.tflite")
+                if (compressedAssets.exists()) {
+                    println "✅ Compressed assets model: ${compressedAssets.length()} bytes"
+                } else {
+                    println "❌ Compressed assets model NOT FOUND at: ${compressedAssets.absolutePath}"
+                }
+                
+                // Check in final APK
+                def apkFile = variant.outputs[0].outputFile
+                if (apkFile.exists()) {
+                    println "📦 APK file: ${apkFile.absolutePath}"
+                    println "📦 APK size: ${apkFile.length()} bytes"
+                }
+                println "========================================="
+            }
+        }
     }
 }
