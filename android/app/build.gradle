@@ -43,6 +43,7 @@ android {
 
     aaptOptions {
         noCompress "tflite"
+        noCompress "tflite", "lite"
     }
 }
 

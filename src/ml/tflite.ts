@@ -22,7 +22,7 @@ export class TFLite {
     }
 
     try {
-      const modelName = Platform.OS === 'ios' ? 'demo_model' : 'demo_model.tflite';
+      const modelName = 'demo_model.tflite';
       const success = await TFLiteNative.loadModel(modelName);
       this.modelLoaded = success;
       return success;

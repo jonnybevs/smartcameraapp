@@ -94,6 +94,24 @@ public class TFLiteModule extends ReactContextBaseJavaModule {
     }
 
     private MappedByteBuffer loadModelFile(String modelPath) throws IOException {
+        // Try loading from raw resources first (more reliable for large files)
+        try {
+            int resourceId = getReactApplicationContext().getResources().getIdentifier(
+                "demo_model", "raw", getReactApplicationContext().getPackageName()
+            );
+            if (resourceId != 0) {
+                AssetFileDescriptor fileDescriptor = getReactApplicationContext().getResources().openRawResourceFd(resourceId);
+                FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
+                FileChannel fileChannel = inputStream.getChannel();
+                long startOffset = fileDescriptor.getStartOffset();
+                long declaredLength = fileDescriptor.getDeclaredLength();
+                return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
+            }
+        } catch (Exception e) {
+            // Fall back to assets if raw resource not found
+        }
+        
+        // Fallback: try loading from assets
         AssetManager assetManager = getReactApplicationContext().getAssets();
         AssetFileDescriptor fileDescriptor = assetManager.openFd(modelPath);
         FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
