@@ -148,12 +148,38 @@ android.applicationVariants.all { variant ->
             }
         }
         
-        // Check after compression
+        // Copy model after compression (the compression task strips it)
+        tasks.whenTaskAdded { task ->
+            if (task.name == 'compressReleaseAssets') {
+                task.doLast {
+                    println "========================================="
+                    println "COPYING MODEL AFTER COMPRESSION"
+                    def sourceModel = file('src/main/assets/demo_model.tflite')
+                    def compressedDir = file("${buildDir}/intermediates/compressed_assets/release/out")
+                    def targetModel = new File(compressedDir, 'demo_model.tflite')
+                    
+                    if (sourceModel.exists()) {
+                        compressedDir.mkdirs()
+                        sourceModel.withInputStream { input ->
+                            targetModel.withOutputStream { output ->
+                                output << input
+                            }
+                        }
+                        println "✅ Copied model to compressed assets: ${targetModel.length()} bytes"
+                    } else {
+                        println "❌ Source model NOT FOUND"
+                    }
+                    println "========================================="
+                }
+            }
+        }
+        
+        // Check after assembly
         variant.assembleProvider.configure {
             doLast {
                 println "========================================="
                 println "AFTER APK ASSEMBLY - Checking compressed assets"
-                def compressedAssets = file("${buildDir}/intermediates/compressed_assets/${variant.name}/out/demo_model.tflite")
+                def compressedAssets = file("${buildDir}/intermediates/compressed_assets/release/out/demo_model.tflite")
                 if (compressedAssets.exists()) {
                     println "✅ Compressed assets model: ${compressedAssets.length()} bytes"
                 } else {
