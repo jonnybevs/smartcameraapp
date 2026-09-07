@@ -42,10 +42,17 @@ android {
         }
         release {
             signingConfig signingConfigs.debug
-            minifyEnabled enableProguardInReleaseBuilds
+            minifyEnabled false
             shrinkResources false
-            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            // Disable asset compression to prevent model file from being stripped
+            crunchPngs false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+    }
+
+    androidResources {
+        noCompress 'tflite', 'lite'
+        ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
     }
 
     aaptOptions {
@@ -148,47 +155,16 @@ android.applicationVariants.all { variant ->
             }
         }
         
-        // Copy model after compression (the compression task strips it)
-        afterEvaluate {
-            tasks.findByName('compressReleaseAssets')?.doLast {
-                println "========================================="
-                println "COPYING MODEL AFTER COMPRESSION"
-                def sourceModel = file('src/main/assets/demo_model.tflite')
-                def compressedDir = file("${buildDir}/intermediates/compressed_assets/release/out")
-                def targetModel = new File(compressedDir, 'demo_model.tflite')
-                
-                if (sourceModel.exists()) {
-                    compressedDir.mkdirs()
-                    sourceModel.withInputStream { input ->
-                        targetModel.withOutputStream { output ->
-                            output << input
-                        }
-                    }
-                    println "✅ Copied model to compressed assets: ${targetModel.length()} bytes"
-                } else {
-                    println "❌ Source model NOT FOUND"
-                }
-                println "========================================="
-            }
-        }
-        
         // Check after assembly
         variant.assembleProvider.configure {
             doLast {
                 println "========================================="
-                println "AFTER APK ASSEMBLY - Checking compressed assets"
-                def compressedAssets = file("${buildDir}/intermediates/compressed_assets/release/out/demo_model.tflite")
-                if (compressedAssets.exists()) {
-                    println "✅ Compressed assets model: ${compressedAssets.length()} bytes"
-                } else {
-                    println "❌ Compressed assets model NOT FOUND at: ${compressedAssets.absolutePath}"
-                }
-                
-                // Check in final APK
+                println "AFTER APK ASSEMBLY"
                 def apkFile = variant.outputs[0].outputFile
                 if (apkFile.exists()) {
                     println "📦 APK file: ${apkFile.absolutePath}"
                     println "📦 APK size: ${apkFile.length()} bytes"
+                    println "✅ Build completed - extract APK to verify model file"
                 }
                 println "========================================="
             }
