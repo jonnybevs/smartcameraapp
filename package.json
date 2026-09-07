@@ -7,7 +7,8 @@
     "ios": "react-native run-ios",
     "start": "react-native start",
     "test": "jest",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "postinstall": "node copy-model.js"
   },
   "dependencies": {
     "react": "18.2.0",
@@ -16,7 +17,7 @@
     "@react-navigation/native": "^6.1.9",
     "@react-navigation/native-stack": "^6.9.17",
     "react-native-safe-area-context": "^4.8.2",
-    "react-native-screens": "^3.29.0",
+    "react-native-screens": "3.29.0",
     "react-native-fs": "^2.20.0"
   },
   "devDependencies": {
@@ -39,5 +40,8 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "resolutions": {
+    "react-native-screens": "3.29.0"
   }
 }
