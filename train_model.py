@@ -9,8 +9,9 @@ import os
 # Configuration
 IMG_SIZE = 224
 BATCH_SIZE = 8
-EPOCHS = 20
+EPOCHS = 50  # Increased for better training
 DATASET_PATH = './dataset'
+FINE_TUNE_EPOCHS = 30  # Additional epochs for fine-tuning
 
 print("=" * 60)
 print("SmartCameraApp - Model Training Script")
@@ -49,17 +50,20 @@ if accepted_count < 5 or rejected_count < 5:
     print("\n⚠️  WARNING: Very small dataset! Recommend at least 10 images per class.")
     print("   Model may not generalize well with this few examples.")
 
-# Data augmentation for training
-print("\n🔄 Setting up data augmentation...")
+# Aggressive data augmentation for training
+print("\n🔄 Setting up aggressive data augmentation...")
 train_datagen = ImageDataGenerator(
     rescale=1./255,
-    rotation_range=20,
-    width_shift_range=0.2,
-    height_shift_range=0.2,
+    rotation_range=40,  # Increased rotation
+    width_shift_range=0.3,  # More horizontal shift
+    height_shift_range=0.3,  # More vertical shift
     horizontal_flip=True,
+    vertical_flip=True,  # Added vertical flip
     validation_split=0.2,
-    zoom_range=0.2,
-    shear_range=0.2
+    zoom_range=0.3,  # More zoom variation
+    shear_range=0.3,  # More shear
+    brightness_range=[0.7, 1.3],  # Brightness variation
+    fill_mode='nearest'  # How to fill new pixels
 )
 
 # Load training data
@@ -95,19 +99,21 @@ base_model = MobileNetV2(
     weights='imagenet'
 )
 
-# Freeze base model
+# Initially freeze base model for transfer learning
 base_model.trainable = False
 
-# Add custom classification head
+# Add custom classification head with more capacity
 x = base_model.output
 x = GlobalAveragePooling2D()(x)
-x = Dense(128, activation='relu')(x)
+x = Dense(256, activation='relu')(x)  # Increased neurons
 x = Dropout(0.5)(x)
+x = Dense(128, activation='relu')(x)  # Added another layer
+x = Dropout(0.3)(x)
 predictions = Dense(2, activation='softmax')(x)
 
 model = Model(inputs=base_model.input, outputs=predictions)
 
-# Compile model
+# Compile model for initial training
 model.compile(
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
     loss='categorical_crossentropy',
@@ -118,39 +124,71 @@ model.compile(
 print("\n📋 Model Architecture:")
 model.summary()
 
-# Train model
-print(f"\n🚀 Starting training for {EPOCHS} epochs...")
+# Phase 1: Train with frozen base model
+print(f"\n🚀 Phase 1: Initial training for {EPOCHS} epochs...")
+print("   (Base model frozen, training classification head only)")
 print("=" * 60)
 history = model.fit(
     train_generator,
     epochs=EPOCHS,
     validation_data=validation_generator,
-    verbose=1
+    verbose=1,
+    callbacks=[
+        tf.keras.callbacks.EarlyStopping(
+            monitor='val_loss',
+            patience=10,
+            restore_best_weights=True
+        ),
+        tf.keras.callbacks.ReduceLROnPlateau(
+            monitor='val_loss',
+            factor=0.5,
+            patience=5,
+            min_lr=1e-7
+        )
+    ]
 )
 
-# Fine-tuning (optional but recommended)
+# Phase 2: Fine-tuning with more layers unfrozen
 print("\n" + "=" * 60)
-print("🔧 Fine-tuning model...")
+print("🔧 Phase 2: Fine-tuning model...")
+print(f"   Unfreezing last 50 layers of base model")
+print(f"   Training for {FINE_TUNE_EPOCHS} additional epochs")
 print("=" * 60)
 base_model.trainable = True
 
-# Freeze early layers, only train last few
-for layer in base_model.layers[:-20]:
+# Unfreeze more layers for better fine-tuning (last 50 layers)
+for layer in base_model.layers[:-50]:
     layer.trainable = False
 
-# Recompile with lower learning rate
+print(f"\n📊 Trainable layers: {sum([1 for layer in model.layers if layer.trainable])}")
+print(f"   Total layers: {len(model.layers)}")
+
+# Recompile with lower learning rate for fine-tuning
 model.compile(
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
     loss='categorical_crossentropy',
     metrics=['accuracy']
 )
 
-# Continue training
+# Continue training with fine-tuning
 history_fine = model.fit(
     train_generator,
-    epochs=10,
+    epochs=FINE_TUNE_EPOCHS,
     validation_data=validation_generator,
-    verbose=1
+    verbose=1,
+    callbacks=[
+        tf.keras.callbacks.EarlyStopping(
+            monitor='val_loss',
+            patience=15,
+            restore_best_weights=True
+        ),
+        tf.keras.callbacks.ReduceLROnPlateau(
+            monitor='val_loss',
+            factor=0.5,
+            patience=7,
+            min_lr=1e-8
+        )
+    ]
 )
 
 # Save Keras model
