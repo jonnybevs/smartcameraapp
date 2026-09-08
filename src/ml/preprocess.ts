@@ -1,5 +1,8 @@
 import RNFS from 'react-native-fs';
-import {Platform} from 'react-native';
+import {Platform, NativeModules} from 'react-native';
+import ImageResizer from '@bam.tech/react-native-image-resizer';
+
+const {ImageProcessor} = NativeModules;
 
 const INPUT_SIZE = 224;
 
@@ -46,15 +49,80 @@ async function loadImageAsBase64(uri: string): Promise<string> {
 }
 
 async function decodeAndResize(base64Image: string): Promise<number[]> {
-  console.log('[Preprocess] decodeAndResize called');
-  console.log('[Preprocess] ERROR: This function uses web APIs (Image, canvas) that do not exist in React Native!');
-  console.log('[Preprocess] Platform:', Platform.OS);
+  console.log('[Preprocess] decodeAndResize called - using React Native image resizer');
   
-  throw new Error(
-    'Image preprocessing not implemented for React Native. ' +
-    'This code uses browser APIs (Image, canvas) which are not available in React Native. ' +
-    'Need to use react-native-image-resizer or similar library instead.'
-  );
+  try {
+    // Write base64 to temporary file
+    const tempPath = `${RNFS.CachesDirectoryPath}/temp_image_${Date.now()}.jpg`;
+    console.log('[Preprocess] Writing temp file:', tempPath);
+    
+    await RNFS.writeFile(tempPath, base64Image, 'base64');
+    console.log('[Preprocess] Temp file written');
+    
+    // Resize image to 224x224 using native resizer
+    console.log('[Preprocess] Resizing image to', INPUT_SIZE, 'x', INPUT_SIZE);
+    const resizedImage = await ImageResizer.createResizedImage(
+      tempPath,
+      INPUT_SIZE,
+      INPUT_SIZE,
+      'JPEG',
+      100,
+      0,
+      undefined,
+      false,
+      {mode: 'cover', onlyScaleDown: false}
+    );
+    
+    console.log('[Preprocess] Image resized:', resizedImage.uri);
+    
+    // Read resized image as base64
+    const resizedBase64 = await RNFS.readFile(resizedImage.uri, 'base64');
+    console.log('[Preprocess] Resized image read, base64 length:', resizedBase64.length);
+    
+    // Convert base64 JPEG to RGB array
+    // For now, we'll use a native module approach or decode manually
+    // Since we can't decode JPEG in pure JS, we need to pass it to native
+    const rgbArray = await decodeJPEGToRGB(resizedImage.uri);
+    
+    // Clean up temp files
+    try {
+      await RNFS.unlink(tempPath);
+      await RNFS.unlink(resizedImage.uri);
+    } catch (cleanupError) {
+      console.warn('[Preprocess] Cleanup error:', cleanupError);
+    }
+    
+    console.log('[Preprocess] RGB array created, length:', rgbArray.length);
+    return rgbArray;
+  } catch (error: any) {
+    console.error('[Preprocess] decodeAndResize error:', error);
+    throw new Error(`Failed to decode and resize image: ${error?.message}`);
+  }
+}
+
+// Helper function to decode JPEG to RGB array using native module
+async function decodeJPEGToRGB(imageUri: string): Promise<number[]> {
+  console.log('[Preprocess] decodeJPEGToRGB called for:', imageUri);
+  
+  try {
+    if (!ImageProcessor) {
+      throw new Error('ImageProcessor native module not available');
+    }
+    
+    console.log('[Preprocess] Calling native ImageProcessor.extractRGBPixels...');
+    const rgbArray = await ImageProcessor.extractRGBPixels(imageUri);
+    console.log('[Preprocess] Native extraction complete, array length:', rgbArray.length);
+    
+    const expectedSize = INPUT_SIZE * INPUT_SIZE * 3;
+    if (rgbArray.length !== expectedSize) {
+      console.warn(`[Preprocess] WARNING: Expected ${expectedSize} values but got ${rgbArray.length}`);
+    }
+    
+    return rgbArray;
+  } catch (error: any) {
+    console.error('[Preprocess] decodeJPEGToRGB error:', error);
+    throw new Error(`Failed to decode JPEG to RGB: ${error?.message}`);
+  }
 }
 
 function normalizePixels(pixels: number[]): number[] {
