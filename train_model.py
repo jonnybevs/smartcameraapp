@@ -91,6 +91,25 @@ print(f"   Training samples: {train_generator.samples}")
 print(f"   Validation samples: {validation_generator.samples}")
 print(f"   Class mapping: {train_generator.class_indices}")
 
+# Calculate class weights to handle imbalance
+class_counts = {}
+for class_name, class_idx in train_generator.class_indices.items():
+    if class_name == 'accepted':
+        class_counts[class_idx] = accepted_count
+    else:
+        class_counts[class_idx] = rejected_count
+
+total_samples = sum(class_counts.values())
+class_weights = {}
+for class_idx, count in class_counts.items():
+    class_weights[class_idx] = total_samples / (len(class_counts) * count)
+
+print(f"\n⚖️  Class Imbalance Handling:")
+print(f"   Accepted images: {accepted_count}")
+print(f"   Rejected images: {rejected_count}")
+print(f"   Class weights: {class_weights}")
+print(f"   (Higher weight = more important during training)")
+
 # Build model with transfer learning
 print("\n🏗️  Building model with MobileNetV2...")
 base_model = MobileNetV2(
@@ -132,6 +151,7 @@ history = model.fit(
     train_generator,
     epochs=EPOCHS,
     validation_data=validation_generator,
+    class_weight=class_weights,  # Apply class weights to handle imbalance
     verbose=1,
     callbacks=[
         tf.keras.callbacks.EarlyStopping(
@@ -175,6 +195,7 @@ history_fine = model.fit(
     train_generator,
     epochs=FINE_TUNE_EPOCHS,
     validation_data=validation_generator,
+    class_weight=class_weights,  # Apply class weights in fine-tuning too
     verbose=1,
     callbacks=[
         tf.keras.callbacks.EarlyStopping(
