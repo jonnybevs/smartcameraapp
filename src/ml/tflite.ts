@@ -51,8 +51,12 @@ export class TFLite {
       throw new Error('Invalid output format. Expected 2 values.');
     }
 
-    const accepted = output[1] > output[0];
-    const confidence = Math.max(output[0], output[1]);
+    // Model outputs: [accepted_score, rejected_score]
+    const acceptedScore = output[0];
+    const rejectedScore = output[1];
+    
+    const accepted = acceptedScore > rejectedScore;
+    const confidence = Math.max(acceptedScore, rejectedScore);
 
     return {accepted, confidence};
   }
