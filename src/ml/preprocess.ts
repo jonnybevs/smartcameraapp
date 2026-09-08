@@ -11,7 +11,15 @@ export interface ImageDimensions {
   height: number;
 }
 
-export async function preprocessImage(imageUri: string): Promise<number[]> {
+export interface PreprocessResult {
+  tensor: number[];
+  rgbMin: number;
+  rgbMax: number;
+  normMin: number;
+  normMax: number;
+}
+
+export async function preprocessImage(imageUri: string): Promise<PreprocessResult> {
   try {
     console.log('[Preprocess] Starting preprocessing for:', imageUri);
     
@@ -25,6 +33,11 @@ export async function preprocessImage(imageUri: string): Promise<number[]> {
     
     console.log('[Preprocess] Step 3: Normalizing pixels...');
     console.log('[Preprocess] Before normalization - sample values:', rgbArray.slice(0, 10));
+    
+    // Calculate RGB min/max before normalization
+    const rgbMin = rgbArray.reduce((min, val) => Math.min(min, val), rgbArray[0]);
+    const rgbMax = rgbArray.reduce((max, val) => Math.max(max, val), rgbArray[0]);
+    
     const normalizedArray = normalizePixels(rgbArray);
     console.log('[Preprocess] After normalization - sample values:', normalizedArray.slice(0, 10));
     const normMin = normalizedArray.reduce((min, val) => Math.min(min, val), normalizedArray[0]);
@@ -32,7 +45,13 @@ export async function preprocessImage(imageUri: string): Promise<number[]> {
     console.log('[Preprocess] Normalized range: [', normMin, ',', normMax, ']');
     console.log('[Preprocess] Normalization complete, final length:', normalizedArray.length);
     
-    return normalizedArray;
+    return {
+      tensor: normalizedArray,
+      rgbMin,
+      rgbMax,
+      normMin,
+      normMax,
+    };
   } catch (error: any) {
     console.error('[Preprocess] ERROR:', error);
     console.error('[Preprocess] Error message:', error?.message);

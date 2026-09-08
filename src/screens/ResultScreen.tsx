@@ -24,7 +24,7 @@ interface Props {
 }
 
 const ResultScreen: React.FC<Props> = ({navigation, route}) => {
-  const {imageUri, accepted, confidence} = route.params;
+  const {imageUri, accepted, confidence, diagnostics} = route.params;
 
   const handleRetake = () => {
     navigation.navigate('Camera');
@@ -92,6 +92,22 @@ const ResultScreen: React.FC<Props> = ({navigation, route}) => {
             <Text style={styles.detailValue}>On-Device</Text>
           </View>
         </View>
+
+        {diagnostics && (
+          <>
+            <View style={styles.divider} />
+            <Text style={styles.detailsTitle}>🔍 Debug Information</Text>
+            <View style={styles.debugContainer}>
+              <Text style={styles.debugTitle}>Model Output:</Text>
+              <Text style={styles.debugText}>Index 0 (Accepted): {diagnostics.acceptedScore.toFixed(4)}</Text>
+              <Text style={styles.debugText}>Index 1 (Rejected): {diagnostics.rejectedScore.toFixed(4)}</Text>
+              
+              <Text style={[styles.debugTitle, {marginTop: 10}]}>Preprocessing:</Text>
+              <Text style={styles.debugText}>RGB range: [{diagnostics.rgbMin}, {diagnostics.rgbMax}]</Text>
+              <Text style={styles.debugText}>Normalized: [{diagnostics.normMin.toFixed(4)}, {diagnostics.normMax.toFixed(4)}]</Text>
+            </View>
+          </>
+        )}
       </View>
 
       <View style={styles.buttonContainer}>
@@ -248,6 +264,26 @@ const styles = StyleSheet.create({
     color: '#6200ee',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  debugContainer: {
+    width: '100%',
+    backgroundColor: '#f9f9f9',
+    padding: 15,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  debugTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
+  },
+  debugText: {
+    fontSize: 13,
+    color: '#666',
+    fontFamily: 'monospace',
+    marginBottom: 3,
   },
 });
 

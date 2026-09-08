@@ -40,28 +40,24 @@ const CameraScreen: React.FC<Props> = ({navigation}) => {
   }, [hasPermission, requestPermission]);
 
   const handleCapture = async () => {
-    if (!camera.current) {
-      Alert.alert('Error', 'Camera not ready');
-      return;
-    }
+    if (!camera.current) return;
 
+    setIsProcessing(true);
     try {
-      setIsProcessing(true);
-      console.log('[CameraScreen] Starting capture...');
-
+      console.log('[CameraScreen] Taking photo...');
       const photo = await camera.current.takePhoto({
         qualityPrioritization: 'quality',
-        flash: 'off',
       });
       console.log('[CameraScreen] Photo captured:', photo.path);
 
-      const imageUri = Platform.OS === 'ios' 
+      const imageUri = Platform.OS === 'ios'
         ? photo.path 
         : `file://${photo.path}`;
       console.log('[CameraScreen] Image URI:', imageUri);
 
       console.log('[CameraScreen] Starting preprocessing...');
-      const imageTensor = await preprocessImage(imageUri);
+      const preprocessResult = await preprocessImage(imageUri);
+      const imageTensor = preprocessResult.tensor;
       console.log('[CameraScreen] Preprocessing complete. Tensor size:', imageTensor.length);
 
       console.log('[CameraScreen] Running inference...');
@@ -84,6 +80,14 @@ const CameraScreen: React.FC<Props> = ({navigation}) => {
         imageUri,
         accepted,
         confidence,
+        diagnostics: {
+          acceptedScore: output[0],
+          rejectedScore: output[1],
+          rgbMin: preprocessResult.rgbMin,
+          rgbMax: preprocessResult.rgbMax,
+          normMin: preprocessResult.normMin,
+          normMax: preprocessResult.normMax,
+        },
       });
     } catch (error: any) {
       console.error('[CameraScreen] ERROR:', error);

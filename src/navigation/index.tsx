@@ -11,6 +11,14 @@ export type RootStackParamList = {
     imageUri: string;
     accepted: boolean;
     confidence: number;
+    diagnostics?: {
+      acceptedScore: number;
+      rejectedScore: number;
+      rgbMin: number;
+      rgbMax: number;
+      normMin: number;
+      normMax: number;
+    };
   };
 };
 
