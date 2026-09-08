@@ -24,7 +24,10 @@ export async function preprocessImage(imageUri: string): Promise<number[]> {
     console.log('[Preprocess] RGB array created, length:', rgbArray.length);
     
     console.log('[Preprocess] Step 3: Normalizing pixels...');
+    console.log('[Preprocess] Before normalization - sample values:', rgbArray.slice(0, 10));
     const normalizedArray = normalizePixels(rgbArray);
+    console.log('[Preprocess] After normalization - sample values:', normalizedArray.slice(0, 10));
+    console.log('[Preprocess] Normalized range: [', Math.min(...normalizedArray), ',', Math.max(...normalizedArray), ']');
     console.log('[Preprocess] Normalization complete, final length:', normalizedArray.length);
     
     return normalizedArray;
@@ -94,6 +97,11 @@ async function decodeAndResize(base64Image: string): Promise<number[]> {
     }
     
     console.log('[Preprocess] RGB array created, length:', rgbArray.length);
+    
+    // Log sample values for debugging
+    console.log('[Preprocess] Sample RGB values (first 10):', rgbArray.slice(0, 10));
+    console.log('[Preprocess] RGB value range: [', Math.min(...rgbArray), ',', Math.max(...rgbArray), ']');
+    
     return rgbArray;
   } catch (error: any) {
     console.error('[Preprocess] decodeAndResize error:', error);

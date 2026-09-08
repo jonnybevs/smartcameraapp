@@ -66,10 +66,19 @@ const CameraScreen: React.FC<Props> = ({navigation}) => {
 
       console.log('[CameraScreen] Running inference...');
       const output = await TFLite.runInference(imageTensor);
-      console.log('[CameraScreen] Inference complete. Output:', output);
+      console.log('[CameraScreen] ========================================');
+      console.log('[CameraScreen] RAW MODEL OUTPUT:');
+      console.log('[CameraScreen] Output array:', output);
+      console.log('[CameraScreen] Output length:', output.length);
+      console.log('[CameraScreen] Index 0 (Accepted score):', output[0]);
+      console.log('[CameraScreen] Index 1 (Rejected score):', output[1]);
+      console.log('[CameraScreen] ========================================');
 
       const {accepted, confidence} = TFLite.interpretOutput(output);
-      console.log('[CameraScreen] Result - Accepted:', accepted, 'Confidence:', confidence);
+      console.log('[CameraScreen] INTERPRETATION:');
+      console.log('[CameraScreen] Accepted:', accepted);
+      console.log('[CameraScreen] Confidence:', confidence);
+      console.log('[CameraScreen] ========================================');
 
       navigation.replace('Result', {
         imageUri,
