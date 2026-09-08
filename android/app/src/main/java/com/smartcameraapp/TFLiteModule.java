@@ -94,10 +94,20 @@ public class TFLiteModule extends ReactContextBaseJavaModule {
             imgData.rewind();
             android.util.Log.d("TFLiteModule", "Filling ByteBuffer...");
             
+            // Log first few values for debugging
+            float firstPixel = (float) imageData.getDouble(0);
+            float lastPixel = (float) imageData.getDouble(imageData.size() - 1);
+            android.util.Log.d("TFLiteModule", "First pixel value: " + firstPixel);
+            android.util.Log.d("TFLiteModule", "Last pixel value: " + lastPixel);
+            
             for (int i = 0; i < imageData.size(); i++) {
                 float pixelValue = (float) imageData.getDouble(i);
                 imgData.putFloat(pixelValue);
             }
+            
+            // CRITICAL: Rewind buffer before inference!
+            imgData.rewind();
+            android.util.Log.d("TFLiteModule", "ByteBuffer filled and rewound. Position: " + imgData.position() + ", Capacity: " + imgData.capacity());
             
             android.util.Log.d("TFLiteModule", "Running inference...");
             float[][] output = new float[1][NUM_CLASSES];
@@ -105,6 +115,7 @@ public class TFLiteModule extends ReactContextBaseJavaModule {
             tflite.run(imgData, output);
             
             android.util.Log.d("TFLiteModule", "Inference complete. Output: [" + output[0][0] + ", " + output[0][1] + "]");
+            android.util.Log.d("TFLiteModule", "Output sum: " + (output[0][0] + output[0][1]));
             
             WritableArray result = new WritableNativeArray();
             for (int i = 0; i < NUM_CLASSES; i++) {

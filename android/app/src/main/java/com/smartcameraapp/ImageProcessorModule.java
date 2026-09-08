@@ -36,19 +36,30 @@ public class ImageProcessorModule extends ReactContextBaseJavaModule {
             String path = imageUri.replace("file://", "");
             
             // Load bitmap
-            Bitmap bitmap = BitmapFactory.decodeFile(path);
-            if (bitmap == null) {
+            Bitmap originalBitmap = BitmapFactory.decodeFile(path);
+            if (originalBitmap == null) {
                 promise.reject("DECODE_ERROR", "Failed to decode image at path: " + path);
                 return;
             }
             
-            int width = bitmap.getWidth();
-            int height = bitmap.getHeight();
-            android.util.Log.d("ImageProcessor", "Bitmap loaded: " + width + "x" + height);
+            int width = originalBitmap.getWidth();
+            int height = originalBitmap.getHeight();
+            android.util.Log.d("ImageProcessor", "Original bitmap loaded: " + width + "x" + height);
+            
+            // Ensure bitmap is exactly 224x224 - scale if needed
+            Bitmap bitmap;
+            if (width != 224 || height != 224) {
+                android.util.Log.d("ImageProcessor", "Scaling bitmap to 224x224");
+                bitmap = Bitmap.createScaledBitmap(originalBitmap, 224, 224, true);
+                originalBitmap.recycle(); // Clean up original
+                android.util.Log.d("ImageProcessor", "Bitmap scaled to: " + bitmap.getWidth() + "x" + bitmap.getHeight());
+            } else {
+                bitmap = originalBitmap;
+            }
             
             // Extract pixels
-            int[] pixels = new int[width * height];
-            bitmap.getPixels(pixels, 0, width, 0, 0, width, height);
+            int[] pixels = new int[224 * 224];
+            bitmap.getPixels(pixels, 0, 224, 0, 0, 224, 224);
             
             // Convert to RGB array (separate R, G, B values)
             WritableArray rgbArray = new WritableNativeArray();
@@ -62,7 +73,12 @@ public class ImageProcessorModule extends ReactContextBaseJavaModule {
                 rgbArray.pushInt(b);
             }
             
-            android.util.Log.d("ImageProcessor", "RGB array created with " + rgbArray.size() + " values");
+            int expectedSize = 224 * 224 * 3; // 150,528
+            android.util.Log.d("ImageProcessor", "RGB array created with " + rgbArray.size() + " values (expected: " + expectedSize + ")");
+            
+            if (rgbArray.size() != expectedSize) {
+                android.util.Log.e("ImageProcessor", "ERROR: Array size mismatch! Got " + rgbArray.size() + " but expected " + expectedSize);
+            }
             
             // Clean up
             bitmap.recycle();
