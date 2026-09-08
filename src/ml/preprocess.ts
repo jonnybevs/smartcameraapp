@@ -27,7 +27,9 @@ export async function preprocessImage(imageUri: string): Promise<number[]> {
     console.log('[Preprocess] Before normalization - sample values:', rgbArray.slice(0, 10));
     const normalizedArray = normalizePixels(rgbArray);
     console.log('[Preprocess] After normalization - sample values:', normalizedArray.slice(0, 10));
-    console.log('[Preprocess] Normalized range: [', Math.min(...normalizedArray), ',', Math.max(...normalizedArray), ']');
+    const normMin = normalizedArray.reduce((min, val) => Math.min(min, val), normalizedArray[0]);
+    const normMax = normalizedArray.reduce((max, val) => Math.max(max, val), normalizedArray[0]);
+    console.log('[Preprocess] Normalized range: [', normMin, ',', normMax, ']');
     console.log('[Preprocess] Normalization complete, final length:', normalizedArray.length);
     
     return normalizedArray;
@@ -98,9 +100,11 @@ async function decodeAndResize(base64Image: string): Promise<number[]> {
     
     console.log('[Preprocess] RGB array created, length:', rgbArray.length);
     
-    // Log sample values for debugging
+    // Log sample values for debugging (avoid spread operator on large arrays)
     console.log('[Preprocess] Sample RGB values (first 10):', rgbArray.slice(0, 10));
-    console.log('[Preprocess] RGB value range: [', Math.min(...rgbArray), ',', Math.max(...rgbArray), ']');
+    const minVal = rgbArray.reduce((min, val) => Math.min(min, val), rgbArray[0]);
+    const maxVal = rgbArray.reduce((max, val) => Math.max(max, val), rgbArray[0]);
+    console.log('[Preprocess] RGB value range: [', minVal, ',', maxVal, ']');
     
     return rgbArray;
   } catch (error: any) {
