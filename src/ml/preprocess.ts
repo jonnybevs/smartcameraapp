@@ -60,6 +60,7 @@ async function decodeAndResize(base64Image: string): Promise<number[]> {
     console.log('[Preprocess] Temp file written');
     
     // Resize image to 224x224 using native resizer
+    // Use 'stretch' mode to ensure exact dimensions (224x224)
     console.log('[Preprocess] Resizing image to', INPUT_SIZE, 'x', INPUT_SIZE);
     const resizedImage = await ImageResizer.createResizedImage(
       tempPath,
@@ -70,7 +71,7 @@ async function decodeAndResize(base64Image: string): Promise<number[]> {
       0,
       undefined,
       false,
-      {mode: 'cover', onlyScaleDown: false}
+      {mode: 'stretch', onlyScaleDown: false}
     );
     
     console.log('[Preprocess] Image resized:', resizedImage.uri);
