@@ -45,42 +45,66 @@ public class TFLiteModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void loadModel(String modelPath, Promise promise) {
         try {
+            android.util.Log.d("TFLiteModule", "Loading model: " + modelPath);
+            
             MappedByteBuffer tfliteModel = loadModelFile(modelPath);
+            android.util.Log.d("TFLiteModule", "Model file loaded. Size: " + tfliteModel.capacity() + " bytes");
             
             Interpreter.Options options = new Interpreter.Options();
             options.setNumThreads(4);
             
             tflite = new Interpreter(tfliteModel, options);
+            android.util.Log.d("TFLiteModule", "Interpreter created successfully");
             
             imgData = ByteBuffer.allocateDirect(
                 4 * INPUT_SIZE * INPUT_SIZE * PIXEL_SIZE
             );
             imgData.order(ByteOrder.nativeOrder());
+            android.util.Log.d("TFLiteModule", "ByteBuffer allocated: " + imgData.capacity() + " bytes");
             
             promise.resolve(true);
         } catch (Exception e) {
-            promise.reject("MODEL_LOAD_ERROR", "Failed to load model: " + e.getMessage(), e);
+            android.util.Log.e("TFLiteModule", "Model load error: " + e.getMessage(), e);
+            promise.reject("MODEL_LOAD_ERROR", "Failed to load model: " + e.getMessage() + ". Stack: " + android.util.Log.getStackTraceString(e), e);
         }
     }
 
     @ReactMethod
     public void runInference(ReadableArray imageData, Promise promise) {
+        android.util.Log.d("TFLiteModule", "runInference called");
+        
         if (tflite == null) {
+            android.util.Log.e("TFLiteModule", "Model not loaded!");
             promise.reject("MODEL_NOT_LOADED", "Model not loaded. Call loadModel first.");
             return;
         }
 
         try {
+            android.util.Log.d("TFLiteModule", "Input array size: " + imageData.size());
+            android.util.Log.d("TFLiteModule", "Expected size: " + (INPUT_SIZE * INPUT_SIZE * PIXEL_SIZE));
+            
+            if (imageData.size() != INPUT_SIZE * INPUT_SIZE * PIXEL_SIZE) {
+                String error = "Invalid input size. Expected " + (INPUT_SIZE * INPUT_SIZE * PIXEL_SIZE) + 
+                              " but got " + imageData.size();
+                android.util.Log.e("TFLiteModule", error);
+                promise.reject("INVALID_INPUT_SIZE", error);
+                return;
+            }
+            
             imgData.rewind();
+            android.util.Log.d("TFLiteModule", "Filling ByteBuffer...");
             
             for (int i = 0; i < imageData.size(); i++) {
                 float pixelValue = (float) imageData.getDouble(i);
                 imgData.putFloat(pixelValue);
             }
             
+            android.util.Log.d("TFLiteModule", "Running inference...");
             float[][] output = new float[1][NUM_CLASSES];
             
             tflite.run(imgData, output);
+            
+            android.util.Log.d("TFLiteModule", "Inference complete. Output: [" + output[0][0] + ", " + output[0][1] + "]");
             
             WritableArray result = new WritableNativeArray();
             for (int i = 0; i < NUM_CLASSES; i++) {
@@ -89,7 +113,8 @@ public class TFLiteModule extends ReactContextBaseJavaModule {
             
             promise.resolve(result);
         } catch (Exception e) {
-            promise.reject("INFERENCE_ERROR", "Inference failed: " + e.getMessage(), e);
+            android.util.Log.e("TFLiteModule", "Inference error: " + e.getMessage(), e);
+            promise.reject("INFERENCE_ERROR", "Inference failed: " + e.getMessage() + ". Stack: " + android.util.Log.getStackTraceString(e), e);
         }
     }
 

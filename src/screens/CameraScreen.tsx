@@ -47,32 +47,46 @@ const CameraScreen: React.FC<Props> = ({navigation}) => {
 
     try {
       setIsProcessing(true);
+      console.log('[CameraScreen] Starting capture...');
 
       const photo = await camera.current.takePhoto({
         qualityPrioritization: 'quality',
         flash: 'off',
       });
+      console.log('[CameraScreen] Photo captured:', photo.path);
 
       const imageUri = Platform.OS === 'ios' 
         ? photo.path 
         : `file://${photo.path}`;
+      console.log('[CameraScreen] Image URI:', imageUri);
 
+      console.log('[CameraScreen] Starting preprocessing...');
       const imageTensor = await preprocessImage(imageUri);
+      console.log('[CameraScreen] Preprocessing complete. Tensor size:', imageTensor.length);
 
+      console.log('[CameraScreen] Running inference...');
       const output = await TFLite.runInference(imageTensor);
+      console.log('[CameraScreen] Inference complete. Output:', output);
 
       const {accepted, confidence} = TFLite.interpretOutput(output);
+      console.log('[CameraScreen] Result - Accepted:', accepted, 'Confidence:', confidence);
 
       navigation.replace('Result', {
         imageUri,
         accepted,
         confidence,
       });
-    } catch (error) {
-      console.error('Error during capture/inference:', error);
+    } catch (error: any) {
+      console.error('[CameraScreen] ERROR:', error);
+      console.error('[CameraScreen] Error message:', error?.message);
+      console.error('[CameraScreen] Error stack:', error?.stack);
+      
+      const errorMessage = error?.message || 'Unknown error';
+      const errorDetails = error?.stack ? `\n\nDetails: ${error.stack.substring(0, 200)}` : '';
+      
       Alert.alert(
         'Processing Error',
-        'Failed to process image. Please try again.',
+        `Failed to process image.\n\nError: ${errorMessage}${errorDetails}`,
       );
     } finally {
       setIsProcessing(false);

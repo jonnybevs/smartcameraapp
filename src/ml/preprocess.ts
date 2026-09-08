@@ -10,67 +10,51 @@ export interface ImageDimensions {
 
 export async function preprocessImage(imageUri: string): Promise<number[]> {
   try {
+    console.log('[Preprocess] Starting preprocessing for:', imageUri);
+    
+    console.log('[Preprocess] Step 1: Loading image as base64...');
     const imageData = await loadImageAsBase64(imageUri);
+    console.log('[Preprocess] Base64 loaded, length:', imageData.length);
+    
+    console.log('[Preprocess] Step 2: Decoding and resizing...');
     const rgbArray = await decodeAndResize(imageData);
+    console.log('[Preprocess] RGB array created, length:', rgbArray.length);
+    
+    console.log('[Preprocess] Step 3: Normalizing pixels...');
     const normalizedArray = normalizePixels(rgbArray);
+    console.log('[Preprocess] Normalization complete, final length:', normalizedArray.length);
     
     return normalizedArray;
-  } catch (error) {
-    console.error('Error preprocessing image:', error);
-    throw error;
+  } catch (error: any) {
+    console.error('[Preprocess] ERROR:', error);
+    console.error('[Preprocess] Error message:', error?.message);
+    console.error('[Preprocess] Error stack:', error?.stack);
+    throw new Error(`Preprocessing failed: ${error?.message || 'Unknown error'}`);
   }
 }
 
 async function loadImageAsBase64(uri: string): Promise<string> {
   try {
+    console.log('[Preprocess] Reading file from:', uri);
     const base64 = await RNFS.readFile(uri, 'base64');
+    console.log('[Preprocess] File read successfully');
     return base64;
-  } catch (error) {
-    console.error('Error reading image file:', error);
-    throw error;
+  } catch (error: any) {
+    console.error('[Preprocess] Error reading image file:', error);
+    throw new Error(`Failed to read image file: ${error?.message}`);
   }
 }
 
 async function decodeAndResize(base64Image: string): Promise<number[]> {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    
-    image.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = INPUT_SIZE;
-        canvas.height = INPUT_SIZE;
-        
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Failed to get canvas context'));
-          return;
-        }
-
-        ctx.drawImage(image, 0, 0, INPUT_SIZE, INPUT_SIZE);
-        
-        const imageData = ctx.getImageData(0, 0, INPUT_SIZE, INPUT_SIZE);
-        const pixels = imageData.data;
-        
-        const rgbArray: number[] = [];
-        for (let i = 0; i < pixels.length; i += 4) {
-          rgbArray.push(pixels[i]);
-          rgbArray.push(pixels[i + 1]);
-          rgbArray.push(pixels[i + 2]);
-        }
-        
-        resolve(rgbArray);
-      } catch (error) {
-        reject(error);
-      }
-    };
-    
-    image.onerror = (error) => {
-      reject(new Error('Failed to load image'));
-    };
-    
-    image.src = `data:image/jpeg;base64,${base64Image}`;
-  });
+  console.log('[Preprocess] decodeAndResize called');
+  console.log('[Preprocess] ERROR: This function uses web APIs (Image, canvas) that do not exist in React Native!');
+  console.log('[Preprocess] Platform:', Platform.OS);
+  
+  throw new Error(
+    'Image preprocessing not implemented for React Native. ' +
+    'This code uses browser APIs (Image, canvas) which are not available in React Native. ' +
+    'Need to use react-native-image-resizer or similar library instead.'
+  );
 }
 
 function normalizePixels(pixels: number[]): number[] {
