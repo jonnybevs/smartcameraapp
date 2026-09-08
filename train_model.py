@@ -244,8 +244,8 @@ def test_inference(image_path):
     output = interpreter.get_tensor(output_details[0]['index'])
     
     print(f"\n   Test image: {os.path.basename(image_path)}")
-    print(f"   Output scores: [Rejected: {output[0][0]:.3f}, Accepted: {output[0][1]:.3f}]")
-    print(f"   Prediction: {'✅ Accepted' if output[0][1] > output[0][0] else '❌ Rejected'}")
+    print(f"   Output scores: [Accepted: {output[0][0]:.3f}, Rejected: {output[0][1]:.3f}]")
+    print(f"   Prediction: {'✅ Accepted' if output[0][0] > output[0][1] else '❌ Rejected'}")
     print(f"   Confidence: {max(output[0]) * 100:.2f}%")
 
 # Test with sample images from your dataset
