@@ -162,8 +162,9 @@ print("✅ Keras model saved as 'trained_model.h5'")
 print("\n🔄 Converting to TensorFlow Lite...")
 converter = tf.lite.TFLiteConverter.from_keras_model(model)
 
-# Optimization (optional)
-converter.optimizations = [tf.lite.Optimize.DEFAULT]
+# NO optimization - we want the full model size
+# Removing optimizations to keep full precision weights
+# converter.optimizations = [tf.lite.Optimize.DEFAULT]  # DISABLED
 
 # Convert
 tflite_model = converter.convert()

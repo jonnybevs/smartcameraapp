@@ -54,3 +54,20 @@ ios/fastlane/test_output
 
 # testing
 /coverage
+
+# Python virtual environment
+ml_env/
+venv/
+*.pyc
+__pycache__/
+
+# Dataset (large files)
+dataset/
+
+# Training artifacts
+trained_model.h5
+
+# Android build outputs
+android/app/build/
+android/build/
+android/.gradle/
