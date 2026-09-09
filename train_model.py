@@ -5,6 +5,11 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import numpy as np
 import os
+from datetime import datetime
+
+# Model Version
+MODEL_VERSION = "v1.3"  # Increment this with each training iteration
+TRAINING_DATE = datetime.now().strftime("%Y-%m-%d %H:%M")
 
 # Configuration
 IMG_SIZE = 224
@@ -15,6 +20,8 @@ FINE_TUNE_EPOCHS = 30  # Additional epochs for fine-tuning
 
 print("=" * 60)
 print("SmartCameraApp - Model Training Script")
+print(f"Model Version: {MODEL_VERSION}")
+print(f"Training Date: {TRAINING_DATE}")
 print("=" * 60)
 
 # Check if dataset exists
@@ -50,20 +57,25 @@ if accepted_count < 5 or rejected_count < 5:
     print("\n⚠️  WARNING: Very small dataset! Recommend at least 10 images per class.")
     print("   Model may not generalize well with this few examples.")
 
-# Aggressive data augmentation for training
-print("\n🔄 Setting up aggressive data augmentation...")
+# Data augmentation for training - realistic transforms only
+print("\n🔄 Setting up data augmentation...")
 train_datagen = ImageDataGenerator(
     rescale=1./255,
-    rotation_range=40,  # Increased rotation
-    width_shift_range=0.3,  # More horizontal shift
-    height_shift_range=0.3,  # More vertical shift
-    horizontal_flip=True,
-    vertical_flip=True,  # Added vertical flip
-    validation_split=0.2,
-    zoom_range=0.3,  # More zoom variation
-    shear_range=0.3,  # More shear
-    brightness_range=[0.7, 1.3],  # Brightness variation
-    fill_mode='nearest'  # How to fill new pixels
+    rotation_range=15,  # Moderate rotation (realistic camera angles)
+    width_shift_range=0.15,  # Slight horizontal shift
+    height_shift_range=0.15,  # Slight vertical shift
+    horizontal_flip=False,  # Don't flip - ladder orientation matters
+    zoom_range=0.2,  # Moderate zoom
+    brightness_range=[0.6, 1.4],  # Lighting variation (important for your use case)
+    fill_mode='nearest',
+    validation_split=0.2
+)
+
+# Validation data - NO augmentation, only rescaling
+print("🔄 Setting up validation data (no augmentation)...")
+val_datagen = ImageDataGenerator(
+    rescale=1./255,
+    validation_split=0.2
 )
 
 # Load training data
@@ -76,9 +88,9 @@ train_generator = train_datagen.flow_from_directory(
     subset='training'
 )
 
-# Load validation data
+# Load validation data (using val_datagen without augmentation)
 print("📂 Loading validation data...")
-validation_generator = train_datagen.flow_from_directory(
+validation_generator = val_datagen.flow_from_directory(
     DATASET_PATH,
     target_size=(IMG_SIZE, IMG_SIZE),
     batch_size=BATCH_SIZE,
@@ -212,10 +224,10 @@ history_fine = model.fit(
     ]
 )
 
-# Save Keras model
+# Save Keras model with version
 print("\n💾 Saving Keras model...")
 model.save('trained_model.h5')
-print("✅ Keras model saved as 'trained_model.h5'")
+print(f"✅ Keras model saved as 'trained_model.h5' ({MODEL_VERSION})")
 
 # Convert to TensorFlow Lite
 print("\n🔄 Converting to TensorFlow Lite...")
@@ -232,9 +244,22 @@ tflite_model = converter.convert()
 with open('demo_model.tflite', 'wb') as f:
     f.write(tflite_model)
 
+# Save version info to text file
+version_info = f"""Model Version: {MODEL_VERSION}
+Training Date: {TRAINING_DATE}
+Dataset Size: {accepted_count} accepted, {rejected_count} rejected
+Architecture: MobileNetV2 + Custom Head (256->128->2)
+Training: {EPOCHS} epochs (frozen) + {FINE_TUNE_EPOCHS} epochs (fine-tuned)
+Augmentation: Rotation ±15°, Zoom 20%, Brightness 0.6-1.4
+"""
+
+with open('model_version.txt', 'w') as f:
+    f.write(version_info)
+
 print("\n" + "=" * 60)
-print("✅ TFLite model saved as 'demo_model.tflite'")
+print(f"✅ TFLite model saved as 'demo_model.tflite' ({MODEL_VERSION})")
 print(f"📦 Model size: {len(tflite_model) / 1024:.2f} KB")
+print(f"📄 Version info saved to 'model_version.txt'")
 print("=" * 60)
 
 # Test the TFLite model
@@ -282,10 +307,13 @@ if rejected_count > 0:
 print("\n" + "=" * 60)
 print("🎉 Training Complete!")
 print("=" * 60)
-print("\n📝 Next Steps:")
+print(f"\n� Model Version: {MODEL_VERSION}")
+print(f"📅 Trained: {TRAINING_DATE}")
+print("\n�📝 Next Steps:")
 print("1. Copy 'demo_model.tflite' to your app:")
 print("   - Android: android/app/src/main/assets/")
 print("   - iOS: Add to Xcode project")
-print("2. Rebuild your app: npm run android or npm run ios")
-print("3. Test with real images!")
+print("2. Copy 'model_version.txt' for reference")
+print("3. Rebuild your app: npm run android or npm run ios")
+print("4. Test with real images!")
 print("\n" + "=" * 60)
