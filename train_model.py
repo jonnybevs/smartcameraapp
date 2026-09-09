@@ -8,15 +8,15 @@ import os
 from datetime import datetime
 
 # Model Version
-MODEL_VERSION = "v1.3"  # Increment this with each training iteration
+MODEL_VERSION = "v1.4"  # Increment this with each training iteration
 TRAINING_DATE = datetime.now().strftime("%Y-%m-%d %H:%M")
 
 # Configuration
 IMG_SIZE = 224
 BATCH_SIZE = 8
-EPOCHS = 50  # Increased for better training
+EPOCHS = 100  # Significantly increased for deeper learning
 DATASET_PATH = './dataset'
-FINE_TUNE_EPOCHS = 30  # Additional epochs for fine-tuning
+FINE_TUNE_EPOCHS = 80  # Much longer fine-tuning for better adaptation
 
 print("=" * 60)
 print("SmartCameraApp - Model Training Script")
@@ -159,48 +159,83 @@ model.summary()
 print(f"\n🚀 Phase 1: Initial training for {EPOCHS} epochs...")
 print("   (Base model frozen, training classification head only)")
 print("=" * 60)
+
+# Advanced callbacks for Phase 1
+phase1_callbacks = [
+    tf.keras.callbacks.EarlyStopping(
+        monitor='val_loss',
+        patience=20,  # Increased patience for longer training
+        restore_best_weights=True,
+        verbose=1
+    ),
+    tf.keras.callbacks.ReduceLROnPlateau(
+        monitor='val_loss',
+        factor=0.3,  # More aggressive reduction
+        patience=8,
+        min_lr=1e-8,
+        verbose=1
+    ),
+    tf.keras.callbacks.ModelCheckpoint(
+        'best_model_phase1.h5',
+        monitor='val_loss',
+        save_best_only=True,
+        verbose=1
+    )
+]
+
 history = model.fit(
     train_generator,
     epochs=EPOCHS,
     validation_data=validation_generator,
     class_weight=class_weights,  # Apply class weights to handle imbalance
     verbose=1,
-    callbacks=[
-        tf.keras.callbacks.EarlyStopping(
-            monitor='val_loss',
-            patience=10,
-            restore_best_weights=True
-        ),
-        tf.keras.callbacks.ReduceLROnPlateau(
-            monitor='val_loss',
-            factor=0.5,
-            patience=5,
-            min_lr=1e-7
-        )
-    ]
+    callbacks=phase1_callbacks
 )
 
 # Phase 2: Fine-tuning with more layers unfrozen
 print("\n" + "=" * 60)
 print("🔧 Phase 2: Fine-tuning model...")
-print(f"   Unfreezing last 50 layers of base model")
+print(f"   Unfreezing last 80 layers of base model (deeper fine-tuning)")
 print(f"   Training for {FINE_TUNE_EPOCHS} additional epochs")
 print("=" * 60)
 base_model.trainable = True
 
-# Unfreeze more layers for better fine-tuning (last 50 layers)
-for layer in base_model.layers[:-50]:
+# Unfreeze even more layers for deeper fine-tuning (last 80 layers)
+for layer in base_model.layers[:-80]:
     layer.trainable = False
 
 print(f"\n📊 Trainable layers: {sum([1 for layer in model.layers if layer.trainable])}")
 print(f"   Total layers: {len(model.layers)}")
 
-# Recompile with lower learning rate for fine-tuning
+# Recompile with very low learning rate for fine-tuning
 model.compile(
-    optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
+    optimizer=tf.keras.optimizers.Adam(learning_rate=5e-5),  # Lower initial LR
     loss='categorical_crossentropy',
     metrics=['accuracy']
 )
+
+# Advanced callbacks for Phase 2 with cosine annealing
+phase2_callbacks = [
+    tf.keras.callbacks.EarlyStopping(
+        monitor='val_loss',
+        patience=25,  # Very patient for long fine-tuning
+        restore_best_weights=True,
+        verbose=1
+    ),
+    tf.keras.callbacks.ReduceLROnPlateau(
+        monitor='val_loss',
+        factor=0.2,  # Aggressive reduction
+        patience=10,
+        min_lr=1e-9,
+        verbose=1
+    ),
+    tf.keras.callbacks.ModelCheckpoint(
+        'best_model_phase2.h5',
+        monitor='val_loss',
+        save_best_only=True,
+        verbose=1
+    )
+]
 
 # Continue training with fine-tuning
 history_fine = model.fit(
@@ -209,19 +244,7 @@ history_fine = model.fit(
     validation_data=validation_generator,
     class_weight=class_weights,  # Apply class weights in fine-tuning too
     verbose=1,
-    callbacks=[
-        tf.keras.callbacks.EarlyStopping(
-            monitor='val_loss',
-            patience=15,
-            restore_best_weights=True
-        ),
-        tf.keras.callbacks.ReduceLROnPlateau(
-            monitor='val_loss',
-            factor=0.5,
-            patience=7,
-            min_lr=1e-8
-        )
-    ]
+    callbacks=phase2_callbacks
 )
 
 # Save Keras model with version
@@ -249,8 +272,11 @@ version_info = f"""Model Version: {MODEL_VERSION}
 Training Date: {TRAINING_DATE}
 Dataset Size: {accepted_count} accepted, {rejected_count} rejected
 Architecture: MobileNetV2 + Custom Head (256->128->2)
-Training: {EPOCHS} epochs (frozen) + {FINE_TUNE_EPOCHS} epochs (fine-tuned)
+Training: {EPOCHS} epochs (frozen) + {FINE_TUNE_EPOCHS} epochs (fine-tuned 80 layers)
 Augmentation: Rotation ±15°, Zoom 20%, Brightness 0.6-1.4
+Learning Rate: 0.001 -> 5e-5 with ReduceLROnPlateau
+Callbacks: EarlyStopping (patience 20/25), ModelCheckpoint, ReduceLROnPlateau
+Total Possible Epochs: {EPOCHS + FINE_TUNE_EPOCHS} (with early stopping)
 """
 
 with open('model_version.txt', 'w') as f:
